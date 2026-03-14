@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lanche Feliz</title>
+
+<style>
+
+*{box-sizing:border-box}
+
+body{
+font-family:Arial;
+margin:0;
+background:#f6f6f6;
+}
+
+header{
+background:#ea1d2c;
+color:white;
+padding:20px;
+font-size:28px;
+font-weight:bold;
+text-align:center;
+}
+
+.main{
+display:flex;
+}
+
+.menu{
+width:70%;
+padding:30px;
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:25px;
+}
+
+.card{
+position:relative;
+background:white;
+border-radius:14px;
+overflow:hidden;
+box-shadow:0 6px 14px rgba(0,0,0,0.1);
+transition:0.2s;
+display:flex;
+flex-direction:column;
+}
+
+.card:hover{
+transform:scale(1.03);
+}
+
+.badge{
+position:absolute;
+top:10px;
+left:10px;
+background:#ea1d2c;
+color:white;
+padding:5px 10px;
+border-radius:20px;
+font-size:12px;
+font-weight:bold;
+}
+
+.card img{
+width:100%;
+height:180px;
+object-fit:cover;
+}
+
+.card-content{
+padding:15px;
+flex:1;
+display:flex;
+flex-direction:column;
+gap:8px;
+}
+
+.price{
+font-weight:bold;
+}
+
+.flavor-select{
+padding:6px;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+button{
+background:#ea1d2c;
+color:white;
+border:none;
+padding:10px;
+border-radius:8px;
+font-weight:bold;
+cursor:pointer;
+}
+
+.cart{
+width:30%;
+background:white;
+padding:25px;
+border-left:1px solid #ddd;
+height:100vh;
+overflow:auto;
+}
+
+.cart-item{
+display:flex;
+justify-content:space-between;
+margin-bottom:12px;
+}
+
+.cart-buttons button{
+padding:5px 8px;
+margin-left:4px;
+}
+
+.total{
+font-size:18px;
+font-weight:bold;
+margin-top:15px;
+}
+
+.checkout{
+margin-top:20px;
+width:100%;
+padding:12px;
+font-size:16px;
+}
+
+/* MODAL */
+
+.modal{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.5);
+display:none;
+justify-content:center;
+align-items:center;
+}
+
+.modal-content{
+background:white;
+padding:30px;
+border-radius:12px;
+width:400px;
+max-height:80vh;
+overflow:auto;
+}
+
+.modal-content h2{
+margin-top:0;
+}
+
+input,select{
+width:100%;
+padding:8px;
+margin-top:6px;
+margin-bottom:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>Quitanda Lanche Feliz 😋</header>
+
+<div class="main">
+
+<div class="menu" id="menu"></div>
+
+<div class="cart">
+
+<h2>🛒 Carrinho</h2>
+
+<div id="cartItems"></div>
+
+<div class="total">Total: R$ <span id="total">0.00</span></div>
+
+<button class="checkout" onclick="openCheckout()">Finalizar Pedido</button>
+
+</div>
+
+</div>
+
+<!-- MODAL PEDIDO -->
+
+<div class="modal" id="checkoutModal">
+
+<div class="modal-content">
+
+<h2>Confirmar Pedido</h2>
+
+<div id="orderSummary"></div>
+
+<h3>Pagamento</h3>
+
+<select id="paymentMethod" onchange="showPaymentOptions()">
+<option value="pix">Pix</option>
+<option value="credito">Cartão de Crédito</option>
+<option value="debito">Cartão de Débito</option>
+<option value="voucher">Voucher</option>
+<option value="dinheiro">Dinheiro</option>
+</select>
+
+<div id="paymentDetails"></div>
+
+<button onclick="confirmOrder()">Confirmar Pagamento</button>
+
+</div>
+
+</div>
+
+<script>
+
+const products=[
+
+{
+id:1,
+name:"Cafezinho",
+price:0.50,
+img:"imagens/cafe.jpg"
+},
+
+{
+id:2,
+name:"Pão com manteiga",
+price:1.20,
+img:"imagens/pao na chapa.jpg"
+},
+
+{
+id:3,
+name:"Misto quente",
+price:1.75,
+img:"imagens/misto quente.jpg"
+},
+
+{
+id:4,
+name:"Misto quente com ovo",
+price:2.00,
+img:"imagens/misto quente com ovo.jpg"
+},
+
+{
+id:5,
+name:"Suco natural",
+price:2.25,
+img:"imagens/suco natural.jpg",
+flavors:["Laranja","Abacaxi","Morango"]
+},
+
+{
+id:6,
+name:"Suco em lata",
+price:3.00,
+img:"imagens/suco em lata.jpg",
+flavors:["Uva","Manga","Pêssego","Goiaba"]
+},
+
+{
+id:7,
+name:"Pão de queijo",
+price:1.00,
+img:"imagens/pao de queijo.jpg"
+},
+
+{
+id:8,
+name:"Porção pão de queijo",
+price:2.50,
+img:"imagens/porcao de pao de queijo.jpg"
+}
+
+]
+
+let cart=[]
+
+function renderMenu(){
+
+const menu=document.getElementById("menu")
+menu.innerHTML=""
+
+products.forEach(product=>{
+
+const card=document.createElement("div")
+card.className="card"
+
+let badge=""
+
+if(product.id===1){
+badge='<div class="badge">mais pedido 🔥</div>'
+}
+
+if(product.id===4){
+badge='<div class="badge" style="background:#ff5e7e">dica da casa ❤</div>'
+}
+
+let flavorHTML=""
+
+if(product.flavors){
+
+flavorHTML=`<select class="flavor-select" id="flavor-${product.id}">
+${product.flavors.map(f=>`<option>${f}</option>`).join("")}
+</select>`
+
+}
+
+card.innerHTML=`
+
+${badge}
+
+<img src="${product.img}">
+
+<div class="card-content">
+
+<h3>${product.name}</h3>
+
+<div class="price">R$ ${product.price.toFixed(2)}</div>
+
+${flavorHTML}
+
+<button onclick="addToCart(${product.id})">Adicionar</button>
+
+</div>
+`
+
+menu.appendChild(card)
+
+})
+
+}
+
+function addToCart(id){
+
+const product=products.find(p=>p.id===id)
+
+let flavor=""
+
+if(product.flavors){
+
+const select=document.getElementById(`flavor-${id}`)
+flavor=select.value
+
+}
+
+const existing=cart.find(item=>item.id===id && item.flavor===flavor)
+
+if(existing){
+existing.qty++
+}
+else{
+cart.push({...product,flavor:flavor,qty:1})
+}
+
+renderCart()
+
+}
+
+function removeFromCart(id){
+
+const index=cart.findIndex(item=>item.id===id)
+
+if(index>-1){
+
+cart[index].qty--
+
+if(cart[index].qty<=0){
+cart.splice(index,1)
+}
+
+}
+
+renderCart()
+
+}
+
+function renderCart(){
+
+const cartItems=document.getElementById("cartItems")
+
+cartItems.innerHTML=""
+
+let total=0
+
+cart.forEach(item=>{
+
+const div=document.createElement("div")
+
+div.className="cart-item"
+
+const subtotal=item.price*item.qty
+
+total+=subtotal
+
+div.innerHTML=`
+
+<div>
+${item.name} ${item.flavor ? "("+item.flavor+")":""}<br>
+x${item.qty}
+</div>
+
+<div class="cart-buttons">
+<button onclick="addToCart(${item.id})">+</button>
+<button onclick="removeFromCart(${item.id})">-</button>
+</div>
+
+`
+
+cartItems.appendChild(div)
+
+})
+
+document.getElementById("total").innerText=total.toFixed(2)
+
+}
+
+function openCheckout(){
+
+if(cart.length===0){
+alert("Carrinho vazio")
+return
+}
+
+document.getElementById("checkoutModal").style.display="flex"
+
+let summary=""
+
+cart.forEach(item=>{
+summary+=`${item.name} ${item.flavor ? "("+item.flavor+")":""} x${item.qty}<br>`
+})
+
+summary+="<hr>Total: R$ "+document.getElementById("total").innerText
+
+document.getElementById("orderSummary").innerHTML=summary
+
+}
+
+function showPaymentOptions(){
+
+const method=document.getElementById("paymentMethod").value
+const area=document.getElementById("paymentDetails")
+
+area.innerHTML=""
+
+if(method==="credito"){
+
+area.innerHTML=`
+
+<input placeholder="Número do cartão">
+<input placeholder="Nome no cartão">
+<input placeholder="Validade">
+<input placeholder="CVV">
+
+`
+
+}
+
+if(method==="debito"){
+
+area.innerHTML=`
+
+<input placeholder="Número do cartão">
+<input placeholder="Senha">
+
+`
+
+}
+
+if(method==="voucher"){
+
+area.innerHTML=`
+
+<select>
+<option>Sodexo</option>
+<option>Alelo</option>
+<option>Ticket Restaurante</option>
+</select>
+
+`
+
+}
+
+}
+
+function confirmOrder(){
+
+alert("Pedido realizado com sucesso!")
+
+cart=[]
+renderCart()
+
+document.getElementById("checkoutModal").style.display="none"
+
+}
+
+renderMenu()
+
+</script>
+
+</body>
+</html>
